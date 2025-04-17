@@ -20,6 +20,17 @@ class NotionService:
         """Initialize the Notion service."""
         self.client = Client(auth=os.getenv("NOTION_TOKEN"))
         self.database_id = os.getenv("NOTION_DATABASE_ID")
+        # Verify database properties on init
+        self.available_properties = self._get_database_properties()
+    
+    def _get_database_properties(self) -> Dict:
+        """Get the actual properties available in the Notion database."""
+        try:
+            database = self.client.databases.retrieve(self.database_id)
+            return database.get("properties", {})
+        except Exception as e:
+            logger.error(f"Error retrieving database properties: {str(e)}")
+            return {}
     
     def create_entry(self, email_data: Dict, category: str, confidence: float, all_scores: Dict[str, float]):
         """Create a new entry in Notion database."""
@@ -37,36 +48,51 @@ class NotionService:
             properties = {}
             
             # Set "Name" property using title type (according to config.py)
-            properties["Name"] = {"title": [{"text": {"content": email_data['subject']}}]}
+            if "Name" in self.available_properties:
+                properties["Name"] = {"title": [{"text": {"content": email_data['subject']}}]}
             
-            # Add other properties from config
-            if "Category" in config.NOTION_DATABASE_PROPERTIES:
+            # Add other properties from config, but only if they exist in the database
+            if "Category" in config.NOTION_DATABASE_PROPERTIES and "Category" in self.available_properties:
                 properties["Category"] = {"select": {"name": category}}
             
-            if "Source" in config.NOTION_DATABASE_PROPERTIES:
+            if "Source" in config.NOTION_DATABASE_PROPERTIES and "Source" in self.available_properties:
                 properties["Source"] = {"url": source_link}
                 
-            if "Date" in config.NOTION_DATABASE_PROPERTIES:
+            if "Date" in config.NOTION_DATABASE_PROPERTIES and "Date" in self.available_properties:
                 properties["Date"] = {"date": {"start": email_data['date']}}
+            
+            # Add the source URL if we scraped it from the web
+            if "Web Source" in config.NOTION_DATABASE_PROPERTIES and "Web Source" in self.available_properties and email_data.get('source_url'):
+                properties["Web Source"] = {"url": email_data['source_url']}
                 
             # We'll move the full content to the page body, but still keep a short preview in the Description field
-            if "Description" in config.NOTION_DATABASE_PROPERTIES:
-                # Create a short preview (100 characters) for the description property
-                preview = email_data['body'][:100] + "..." if len(email_data['body']) > 100 else email_data['body']
+            if "Description" in config.NOTION_DATABASE_PROPERTIES and "Description" in self.available_properties:
+                # Clean up the preview to remove any formatting characters or newlines
+                cleaned_preview = re.sub(r'[\n\r\t]+', ' ', email_data['body'])
+                cleaned_preview = re.sub(r'\s{2,}', ' ', cleaned_preview)
+                cleaned_preview = re.sub(r'[*#\-_]+', '', cleaned_preview)
+                # Ensure preview is under 2000 chars (Notion limit)
+                preview = cleaned_preview[:1900] + "..." if len(cleaned_preview) > 1900 else cleaned_preview
                 properties["Description"] = {"rich_text": [{"text": {"content": preview}}]}
                 
-            # Add optional properties if configured
-            if "Content Link" in config.NOTION_DATABASE_PROPERTIES:
+            # Add optional properties if configured AND if they exist in the database
+            if "Content Link" in config.NOTION_DATABASE_PROPERTIES and "Content Link" in self.available_properties:
                 properties["Content Link"] = {"url": content_link} if content_link else {"url": None}
                 
-            if "Confidence" in config.NOTION_DATABASE_PROPERTIES:
+            if "Confidence" in config.NOTION_DATABASE_PROPERTIES and "Confidence" in self.available_properties:
                 properties["Confidence"] = {"number": confidence}
                 
-            if "Other Categories" in config.NOTION_DATABASE_PROPERTIES:
-                properties["Other Categories"] = {"rich_text": [{"text": {"content": other_categories}}]}
+            if "Other Categories" in config.NOTION_DATABASE_PROPERTIES and "Other Categories" in self.available_properties:
+                other_cats_text = other_categories[:1900] if len(other_categories) > 1900 else other_categories
+                properties["Other Categories"] = {"rich_text": [{"text": {"content": other_cats_text}}]}
                 
-            if "Sender" in config.NOTION_DATABASE_PROPERTIES:
-                properties["Sender"] = {"rich_text": [{"text": {"content": email_data['sender']}}]}
+            if "Sender" in config.NOTION_DATABASE_PROPERTIES and "Sender" in self.available_properties:
+                sender_text = email_data['sender'][:1900] if len(email_data['sender']) > 1900 else email_data['sender']
+                properties["Sender"] = {"rich_text": [{"text": {"content": sender_text}}]}
+                
+            if "Source Type" in config.NOTION_DATABASE_PROPERTIES and "Source Type" in self.available_properties:
+                source_type = "Web Scraped" if email_data.get('was_scraped') else "Email"
+                properties["Source Type"] = {"select": {"name": source_type}}
             
             # Prepare the page content blocks with enhanced formatting
             children = []
@@ -166,6 +192,32 @@ class NotionService:
                 },
                 {
                     "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": "Source: "
+                                },
+                                "annotations": {
+                                    "bold": True
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": "Web Scraped" if email_data.get('was_scraped') else "Email Content"
+                                },
+                                "annotations": {
+                                    "color": "green" if email_data.get('was_scraped') else "gray"
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "object": "block",
                     "type": "divider",
                     "divider": {}
                 },
@@ -186,327 +238,27 @@ class NotionService:
                 }
             ])
             
-            # Initialize content section blocks (we'll need to limit these)
+            # Reserve slots for content (Notion has 100 block limit)
+            # Header section took up 7 blocks, leave some room for links section
+            max_content_blocks = 80
+            
+            # Initialize content section blocks
             content_blocks = []
             
-            # Split the text by line breaks
-            lines = email_data['body'].split('\n')
+            # Determine how to process the content based on whether we have scraped sections
+            if email_data.get('sections'):
+                # Use the pre-scraped sections (from web scraping)
+                content_blocks = self._create_blocks_from_scraped_sections(email_data['sections'])
+            else:
+                # Process the content from email body (traditional method)
+                content_blocks = self._create_blocks_from_email_body(email_data['body'])
             
-            # Process content line by line for better structure
-            current_section = None
-            is_in_list = False
-            section_content = []
-            current_section_name = "Main Content"
-            sections = []
-            
-            # First pass: organize lines into sections for better consolidation
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-                
-                # Check if this is a section header
-                is_section_header = (
-                    line.isupper() and len(line) > 3 and len(line) < 60 or
-                    re.match(r'^[=#\*]+\s+.+\s+[=#\*]+$', line) or
-                    re.match(r'^\s*\d+\.\s+[A-Z]', line) or
-                    re.match(r'^T\s*L\s*D\s*R', line, re.IGNORECASE) or
-                    re.match(r'^📱|^📈|^🔍|^🚀|^💡|^📊', line) or  # Common emoji section markers
-                    any(section.lower() in line.lower() for section in [
-                        "WHAT'S NEW", "IN THE NEWS", "RELEASES", "TOOLS", "RESOURCES",
-                        "ATTACKS", "VULNERABILITIES", "STRATEGIES", "TACTICS",
-                        "LAUNCHES", "EVENTS", "FUNDING", "News & Trends", "TLDR"
-                    ])
-                )
-                
-                if is_section_header:
-                    # Save the previous section if it exists
-                    if section_content:
-                        sections.append({"name": current_section_name, "content": section_content})
-                    
-                    # Start a new section
-                    current_section_name = line
-                    section_content = []
-                else:
-                    section_content.append(line)
-            
-            # Add the last section if it exists
-            if section_content:
-                sections.append({"name": current_section_name, "content": section_content})
-            
-            # Second pass: create blocks from sections, but limit the total
-            max_sections = min(len(sections), 10)  # Limit to 10 sections max
-            links_block_count = min(len(email_data['links']), 10) + 1  # Links + header
-            
-            # Reserve blocks for headers, metadata, and links
-            reserved_blocks = 6 + links_block_count  # 6 header blocks + links
-            max_content_blocks = 100 - reserved_blocks
-            
-            # Calculate blocks per section
-            blocks_per_section = max_content_blocks // max_sections if max_sections > 0 else 0
-            
-            # Process each section with block limits
-            processed_sections = 0
-            for section in sections[:max_sections]:
-                processed_sections += 1
-                
-                # Add section header
+            # Limit content blocks to max allowed
+            if len(content_blocks) > max_content_blocks:
+                logger.warning(f"Content has {len(content_blocks)} blocks, limiting to {max_content_blocks}")
+                content_blocks = content_blocks[:max_content_blocks]
+                # Add a note about truncation
                 content_blocks.append({
-                    "object": "block",
-                    "type": "heading_3",
-                    "heading_3": {
-                        "rich_text": [
-                            {
-                                "type": "text",
-                                "text": {
-                                    "content": section["name"]
-                                },
-                                "annotations": {
-                                    "bold": True,
-                                    "color": "blue"
-                                }
-                            }
-                        ]
-                    }
-                })
-                
-                # Determine how to handle section content based on length
-                section_lines = section["content"]
-                blocks_left = blocks_per_section - 1  # -1 for the header
-                
-                if len(section_lines) <= blocks_left:
-                    # We can include all lines individually
-                    for line in section_lines:
-                        # Try to format as list item if applicable
-                        if line.startswith('•') or line.startswith('-') or line.startswith('*') or re.match(r'^\s*\d+\.\s+', line):
-                            content = re.sub(r'^\s*[•\-\*\d\.]+\s*', '', line)
-                            content_blocks.append({
-                                "object": "block",
-                                "type": "bulleted_list_item",
-                                "bulleted_list_item": {
-                                    "rich_text": [
-                                        {
-                                            "type": "text",
-                                            "text": {
-                                                "content": content
-                                            }
-                                        }
-                                    ]
-                                }
-                            })
-                        else:
-                            content_blocks.append({
-                                "object": "block",
-                                "type": "paragraph",
-                                "paragraph": {
-                                    "rich_text": [
-                                        {
-                                            "type": "text",
-                                            "text": {
-                                                "content": line
-                                            }
-                                        }
-                                    ]
-                                }
-                            })
-                else:
-                    # Consolidate content to fit in available blocks
-                    consolidated_text = "\n\n".join(section_lines)
-                    
-                    # Split into roughly equal chunks to fit in available blocks
-                    max_chunk_size = 1990  # Keep under Notion's text content limit
-                    avg_chunk_size = min(max_chunk_size, len(consolidated_text) // blocks_left + 1)
-                    
-                    # Split text into paragraphs of appropriate size
-                    current_chunk = ""
-                    for line in section_lines:
-                        if len(current_chunk) + len(line) + 2 > avg_chunk_size:
-                            # Add current chunk as a block
-                            content_blocks.append({
-                                "object": "block",
-                                "type": "paragraph",
-                                "paragraph": {
-                                    "rich_text": [
-                                        {
-                                            "type": "text",
-                                            "text": {
-                                                "content": current_chunk.strip()
-                                            }
-                                        }
-                                    ]
-                                }
-                            })
-                            current_chunk = line
-                            blocks_left -= 1
-                            # If we're out of blocks, break
-                            if blocks_left <= 0:
-                                break
-                        else:
-                            if current_chunk:
-                                current_chunk += "\n\n" + line
-                            else:
-                                current_chunk = line
-                    
-                    # Add the last chunk if there's anything left and we have space
-                    if current_chunk and blocks_left > 0:
-                        content_blocks.append({
-                            "object": "block",
-                            "type": "paragraph",
-                            "paragraph": {
-                                "rich_text": [
-                                    {
-                                        "type": "text",
-                                        "text": {
-                                            "content": current_chunk.strip()
-                                        }
-                                    }
-                                ]
-                            }
-                        })
-            
-            # Add all content blocks
-            children.extend(content_blocks)
-            
-            # If we have links, add them in a better formatted section
-            if email_data['links']:
-                # Add a divider before links section
-                children.extend([
-                    {
-                        "object": "block",
-                        "type": "divider",
-                        "divider": {}
-                    },
-                    {
-                        "object": "block",
-                        "type": "heading_2",
-                        "heading_2": {
-                            "rich_text": [
-                                {
-                                    "type": "text",
-                                    "text": {
-                                        "content": "Links from Newsletter"
-                                    }
-                                }
-                            ],
-                            "color": "blue_background"
-                        }
-                    }
-                ])
-                
-                # Add each link as a separate item with better formatting (limit to 10 links)
-                for i, link in enumerate(email_data['links'][:10], 1):
-                    # Try to create a cleaner display text
-                    display_text = link
-                    if '?' in link:
-                        display_text = link.split('?')[0]
-                    
-                    # Truncate very long URLs for display
-                    if len(display_text) > 80:
-                        display_text = display_text[:77] + "..."
-                        
-                    children.append({
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [
-                                {
-                                    "type": "text",
-                                    "text": {
-                                        "content": f"[{i}] "
-                                    },
-                                    "annotations": {
-                                        "bold": True
-                                    }
-                                },
-                                {
-                                    "type": "text",
-                                    "text": {
-                                        "content": display_text,
-                                        "link": {"url": link}
-                                    },
-                                    "annotations": {
-                                        "color": "blue"
-                                    }
-                                }
-                            ]
-                        }
-                    })
-            
-            # Ensure we don't exceed 100 blocks (Notion API limit)
-            if len(children) > 100:
-                logger.warning(f"Trimming content blocks from {len(children)} to 100 (Notion API limit)")
-                # Keep header (6 blocks) + some content + links section (up to 12 blocks)
-                content_end = 100 - 12 if len(email_data['links']) > 0 else 100
-                children = children[:6] + children[6:content_end] + (children[-12:] if len(email_data['links']) > 0 else [])
-            
-            new_page = {
-                "parent": {"database_id": self.database_id},
-                "properties": properties,
-                "children": children
-            }
-            
-            response = self.client.pages.create(**new_page)
-            logger.info(f"Created Notion entry: {email_data['subject']} - {category} (confidence: {confidence:.2f})")
-            return response
-            
-        except APIResponseError as e:
-            logger.error(f"Notion API Error: {str(e)}")
-            # Check if it's a property that doesn't exist
-            if "does not exist" in str(e):
-                return self._create_basic_entry(email_data, category)
-            return None
-        except Exception as e:
-            logger.error(f"Error creating Notion entry: {str(e)}")
-            return None
-    
-    def _create_basic_entry(self, email_data: Dict, category: str):
-        """Create a basic entry with minimal properties when the main create fails."""
-        try:
-            # Prepare basic properties
-            basic_properties = {}
-            
-            # Use "Name" for the title field as configured in config.py
-            basic_properties["Name"] = {"title": [{"text": {"content": email_data['subject']}}]}
-            
-            # Add only the essential properties that should exist
-            if "Category" in config.NOTION_DATABASE_PROPERTIES:
-                basic_properties["Category"] = {"select": {"name": category}}
-            
-            if "Source" in config.NOTION_DATABASE_PROPERTIES:
-                basic_properties["Source"] = {"url": f"https://mail.google.com/mail/u/0/#inbox/{email_data['message_id']}"}
-            
-            if "Date" in config.NOTION_DATABASE_PROPERTIES:
-                basic_properties["Date"] = {"date": {"start": email_data['date']}}
-            
-            # Create a short preview for description
-            preview = email_data['body'][:100] + "..." if len(email_data['body']) > 100 else email_data['body']
-            
-            if "Description" in config.NOTION_DATABASE_PROPERTIES:
-                basic_properties["Description"] = {"rich_text": [{"text": {"content": preview}}]}
-            
-            # Create simplified but well-formatted content blocks for the page body
-            basic_children = []
-            
-            # Add simplified header section (3 blocks)
-            sender_name = email_data['sender'].split('<')[0].strip()
-            
-            basic_children.extend([
-                {
-                    "object": "block",
-                    "type": "heading_2",
-                    "heading_2": {
-                        "rich_text": [
-                            {
-                                "type": "text",
-                                "text": {
-                                    "content": "Newsletter Content"
-                                }
-                            }
-                        ],
-                        "color": "blue_background"
-                    }
-                },
-                {
                     "object": "block",
                     "type": "paragraph",
                     "paragraph": {
@@ -514,93 +266,24 @@ class NotionService:
                             {
                                 "type": "text",
                                 "text": {
-                                    "content": f"From: {sender_name}"
+                                    "content": "Note: Content was truncated due to Notion's block limit."
+                                },
+                                "annotations": {
+                                    "italic": True,
+                                    "color": "orange"
                                 }
                             }
                         ]
                     }
-                },
-                {
-                    "object": "block",
-                    "type": "divider",
-                    "divider": {}
-                }
-            ])
+                })
             
-            # Calculate how many content blocks we can add
-            reserved_blocks = 3  # Header blocks
-            links_blocks = min(5, len(email_data['links'])) + 2  # Links (max 5) + header + divider
-            max_content_blocks = 95 - links_blocks  # Reserve 95 blocks total (safety margin)
+            # Add all content blocks
+            children.extend(content_blocks)
             
-            # Process the body text with basic formatting
-            body_text = email_data['body']
-            paragraphs = body_text.split('\n\n')
-            
-            # Consolidate paragraphs to fit within block limit
-            if len(paragraphs) > max_content_blocks:
-                # Combine into larger chunks to fit in the available blocks
-                consolidated_text = "\n\n".join(paragraphs)
-                avg_chunk_size = min(1990, len(consolidated_text) // max_content_blocks + 1)
-                
-                chunks = []
-                current_chunk = ""
-                
-                for paragraph in paragraphs:
-                    if len(current_chunk) + len(paragraph) + 4 > avg_chunk_size and current_chunk:
-                        chunks.append(current_chunk)
-                        current_chunk = paragraph
-                    else:
-                        if current_chunk:
-                            current_chunk += "\n\n" + paragraph
-                        else:
-                            current_chunk = paragraph
-                
-                if current_chunk:
-                    chunks.append(current_chunk)
-                
-                # Create blocks from chunks (limited to max_content_blocks)
-                for chunk in chunks[:max_content_blocks]:
-                    basic_children.append({
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [
-                                {
-                                    "type": "text",
-                                    "text": {
-                                        "content": chunk.strip()
-                                    }
-                                }
-                            ]
-                        }
-                    })
-            else:
-                # We can include all paragraphs directly (still limited to max_content_blocks)
-                for i, paragraph in enumerate(paragraphs):
-                    if i >= max_content_blocks:
-                        break
-                        
-                    if not paragraph.strip():
-                        continue
-                        
-                    basic_children.append({
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [
-                                {
-                                    "type": "text",
-                                    "text": {
-                                        "content": paragraph.strip()
-                                    }
-                                }
-                            ]
-                        }
-                    })
-            
-            # Add a simple links section if we have links
-            if email_data['links']:
-                basic_children.extend([
+            # If we have links and space for them, add them in a better formatted section
+            if email_data['links'] and (len(children) < 95):  # Leave some margin
+                # Add a divider before links section
+                children.extend([
                     {
                         "object": "block",
                         "type": "divider",
@@ -622,22 +305,20 @@ class NotionService:
                     }
                 ])
                 
-                # Add simplified links (first 5 only in fallback mode)
-                for i, link in enumerate(email_data['links'][:5], 1):
-                    basic_children.append({
+                # Add links as bullet points (up to the limit)
+                links_to_add = min(len(email_data['links']), 95 - len(children))
+                for i in range(links_to_add):
+                    link = email_data['links'][i]
+                    # Skip empty links
+                    if not link or link == "#" or link.startswith("javascript:"):
+                        continue
+                        
+                    # Create a bullet with the link
+                    children.append({
                         "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
+                        "type": "bulleted_list_item",
+                        "bulleted_list_item": {
                             "rich_text": [
-                                {
-                                    "type": "text",
-                                    "text": {
-                                        "content": f"[{i}] ",
-                                    },
-                                    "annotations": {
-                                        "bold": True
-                                    }
-                                },
                                 {
                                     "type": "text",
                                     "text": {
@@ -648,21 +329,323 @@ class NotionService:
                             ]
                         }
                     })
+                    
+                    # Break if we're getting too close to the limit
+                    if len(children) >= 98:
+                        break
             
-            # Final check to ensure we're under the 100 block limit
-            if len(basic_children) > 100:
-                logger.warning(f"Trimming fallback content from {len(basic_children)} to 100 blocks")
-                basic_children = basic_children[:100]
+            # Final check to ensure we don't exceed the block limit
+            if len(children) > 100:
+                logger.warning(f"Total blocks: {len(children)}, truncating to 100")
+                children = children[:99]
+                children.append({
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": "Content truncated due to Notion's block limit."
+                                },
+                                "annotations": {
+                                    "italic": True,
+                                    "color": "red"
+                                }
+                            }
+                        ]
+                    }
+                })
             
-            basic_page = {
-                "parent": {"database_id": self.database_id},
-                "properties": basic_properties,
-                "children": basic_children
+            # Create the page
+            try:
+                response = self.client.pages.create(
+                    parent={"database_id": self.database_id},
+                    properties=properties,
+                    children=children
+                )
+                logger.info(f"Created Notion entry: {email_data['subject']}")
+                return response
+            except APIResponseError as e:
+                logger.error(f"Notion API Error: {str(e)}")
+                # Fall back to creating a basic entry
+                return self._create_basic_entry(email_data, category)
+                
+        except Exception as e:
+            logger.error(f"Error creating Notion entry: {str(e)}")
+            return None
+    
+    def _create_blocks_from_scraped_sections(self, sections: List[Dict]) -> List[Dict]:
+        """Create Notion blocks from scraped sections with length limits handling."""
+        blocks = []
+        
+        for section in sections:
+            # Add section heading if it has a name
+            if section.get("name") and section["name"] != "Newsletter Content":
+                blocks.append({
+                    "object": "block",
+                    "type": "heading_3",
+                    "heading_3": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": section["name"]
+                                }
+                            }
+                        ]
+                    }
+                })
+            
+            # Add content paragraphs with length limits
+            for content_item in section.get("content", []):
+                # Skip empty content
+                if not content_item.strip():
+                    continue
+                
+                # Check if content is a bullet point
+                if content_item.startswith('•') or content_item.startswith('*') or content_item.startswith('-'):
+                    # Split long bullet points
+                    for chunk in self._split_text_into_chunks(content_item[1:].strip(), 1900):
+                        blocks.append({
+                            "object": "block",
+                            "type": "bulleted_list_item",
+                            "bulleted_list_item": {
+                                "rich_text": [
+                                    {
+                                        "type": "text",
+                                        "text": {
+                                            "content": chunk
+                                        }
+                                    }
+                                ]
+                            }
+                        })
+                else:
+                    # Split long paragraphs into multiple paragraph blocks
+                    for chunk in self._split_text_into_chunks(content_item, 1900):
+                        blocks.append({
+                            "object": "block",
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [
+                                    {
+                                        "type": "text",
+                                        "text": {
+                                            "content": chunk
+                                        }
+                                    }
+                                ]
+                            }
+                        })
+        
+        return blocks
+    
+    def _create_blocks_from_email_body(self, body: str) -> List[Dict]:
+        """Create Notion blocks from email body with length limits handling."""
+        blocks = []
+        
+        # Split the body by double newlines to separate paragraphs
+        paragraphs = re.split(r'\n\s*\n', body)
+        
+        for paragraph in paragraphs:
+            # Skip empty paragraphs
+            if not paragraph.strip():
+                continue
+            
+            # Check if paragraph is a heading (starting with # or ##)
+            if re.match(r'^#+\s+', paragraph):
+                heading_level = len(re.match(r'^(#+)\s+', paragraph).group(1))
+                heading_text = re.sub(r'^#+\s+', '', paragraph)
+                
+                if heading_level <= 3:  # h1, h2, h3
+                    heading_type = f"heading_{heading_level}"
+                    blocks.append({
+                        "object": "block",
+                        "type": heading_type,
+                        heading_type: {
+                            "rich_text": [
+                                {
+                                    "type": "text",
+                                    "text": {
+                                        "content": heading_text[:1900]
+                                    }
+                                }
+                            ]
+                        }
+                    })
+                else:  # treat as paragraph for h4+
+                    for chunk in self._split_text_into_chunks(heading_text, 1900):
+                        blocks.append({
+                            "object": "block",
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [
+                                    {
+                                        "type": "text",
+                                        "text": {
+                                            "content": chunk
+                                        },
+                                        "annotations": {
+                                            "bold": True
+                                        }
+                                    }
+                                ]
+                            }
+                        })
+            # Check if paragraph is a bullet list
+            elif paragraph.strip().startswith(('•', '*', '-')):
+                # Split into bullet items
+                bullet_items = re.split(r'\n\s*[•*-]\s*', paragraph)
+                # Remove first empty item if it exists
+                if bullet_items and not bullet_items[0].strip():
+                    bullet_items = bullet_items[1:]
+                    
+                for item in bullet_items:
+                    if not item.strip():
+                        continue
+                        
+                    # Split long bullet points
+                    for chunk in self._split_text_into_chunks(item, 1900):
+                        blocks.append({
+                            "object": "block",
+                            "type": "bulleted_list_item",
+                            "bulleted_list_item": {
+                                "rich_text": [
+                                    {
+                                        "type": "text",
+                                        "text": {
+                                            "content": chunk
+                                        }
+                                    }
+                                ]
+                            }
+                        })
+            else:
+                # Regular paragraph, split into chunks if needed
+                for chunk in self._split_text_into_chunks(paragraph, 1900):
+                    blocks.append({
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [
+                                {
+                                    "type": "text",
+                                    "text": {
+                                        "content": chunk
+                                    }
+                                }
+                            ]
+                        }
+                    })
+        
+        return blocks
+    
+    def _split_text_into_chunks(self, text: str, max_length: int = 1900) -> List[str]:
+        """Split text into chunks that are under the max_length limit."""
+        if not text:
+            return []
+            
+        if len(text) <= max_length:
+            return [text]
+            
+        chunks = []
+        current_text = text
+        
+        while len(current_text) > max_length:
+            # Find a good breaking point
+            split_point = current_text[:max_length].rfind('. ')
+            if split_point == -1:
+                split_point = current_text[:max_length].rfind(' ')
+            if split_point == -1:
+                split_point = max_length - 1
+            
+            # Add chunk and continue with remaining text
+            chunks.append(current_text[:split_point+1])
+            current_text = current_text[split_point+1:]
+        
+        # Add the final chunk
+        if current_text:
+            chunks.append(current_text)
+            
+        return chunks
+    
+    def _create_basic_entry(self, email_data: Dict, category: str):
+        """Create a basic Notion entry with minimal content when primary method fails."""
+        try:
+            # Just the essential properties
+            properties = {
+                "Name": {"title": [{"text": {"content": email_data['subject']}}]}
             }
             
-            response = self.client.pages.create(**basic_page)
+            # Add category if available
+            if "Category" in self.available_properties:
+                properties["Category"] = {"select": {"name": category}}
+                
+            # Add date if available
+            if "Date" in self.available_properties:
+                properties["Date"] = {"date": {"start": email_data['date']}}
+            
+            # Create a simple paragraph with the content
+            children = [{
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": "Content from: " + email_data['sender']
+                            }
+                        }
+                    ]
+                }
+            }]
+            
+            # Add simple content blocks in chunks to avoid length issues
+            content_chunks = self._split_text_into_chunks(email_data['body'], 1900)
+            for chunk in content_chunks[:95]:  # Limit to avoid block limits
+                children.append({
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": chunk
+                                }
+                            }
+                        ]
+                    }
+                })
+            
+            # Add note if content was truncated
+            if len(content_chunks) > 95:
+                children.append({
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": "Content truncated (too long for Notion)."
+                                }
+                            }
+                        ]
+                    }
+                })
+            
+            response = self.client.pages.create(
+                parent={"database_id": self.database_id},
+                properties=properties,
+                children=children
+            )
+            
             logger.info(f"Created basic Notion entry after error: {email_data['subject']}")
             return response
+            
         except Exception as e:
-            logger.error(f"Failed to create basic Notion entry: {str(e)}")
+            logger.error(f"Even basic entry creation failed: {str(e)}")
             return None 

@@ -83,7 +83,7 @@ class GmailService:
             return None
 
     def _clean_html_content(self, html_content: str) -> str:
-        """Better HTML to text conversion that preserves newsletter structure."""
+        """Better HTML to text conversion that preserves newsletter structure without excessive formatting."""
         if not html_content:
             return ""
             
@@ -93,33 +93,38 @@ class GmailService:
         # Remove script tags and their contents
         cleaned_text = re.sub(r'<script[^>]*>.*?</script>', '', cleaned_text, flags=re.DOTALL)
         
+        # Remove meta tags, link tags, and other header content
+        cleaned_text = re.sub(r'<head[^>]*>.*?</head>', '', cleaned_text, flags=re.DOTALL)
+        
         # Remove invisible characters often used in newsletters for spacing
         cleaned_text = re.sub(r'[\u200B-\u200D\uFEFF\u00A0\u2000-\u200F\u2028-\u202F\u205F-\u206F]', '', cleaned_text)
         
-        # Replace <div>, <p>, and <br> with newlines to preserve structure
-        cleaned_text = re.sub(r'<(?:div|p)[^>]*>', '\n', cleaned_text)
-        cleaned_text = re.sub(r'</(?:div|p)>', '\n', cleaned_text)
-        cleaned_text = re.sub(r'<br\s*/?>|<br>|<hr\s*/?>|<hr>', '\n', cleaned_text)
+        # Simpler approach that focuses on preserving structure without adding excessive newlines
         
-        # Convert heading tags to uppercase with newlines before and after
+        # Convert headings with proper spacing
         for i in range(1, 7):
-            cleaned_text = re.sub(f'<h{i}[^>]*>(.*?)</h{i}>', r'\n\n\1\n', cleaned_text)
+            cleaned_text = re.sub(f'<h{i}[^>]*>(.*?)</h{i}>', r'\n\n\1\n', cleaned_text, flags=re.DOTALL)
+        
+        # Replace block elements with appropriate newlines
+        cleaned_text = re.sub(r'<(?:div|p|section|article)[^>]*>', '\n', cleaned_text)
+        cleaned_text = re.sub(r'</(?:div|p|section|article)>', '\n', cleaned_text)
+        cleaned_text = re.sub(r'<br\s*/?>|<br>', '\n', cleaned_text)
+        cleaned_text = re.sub(r'<hr\s*/?>|<hr>', '\n---\n', cleaned_text)
         
         # Preserve list items
-        cleaned_text = re.sub(r'<li[^>]*>(.*?)</li>', r'\n• \1', cleaned_text)
+        cleaned_text = re.sub(r'<li[^>]*>(.*?)</li>', r'\n• \1', cleaned_text, flags=re.DOTALL)
         
-        # Remove all remaining HTML tags
-        cleaned_text = re.sub(r'<[^>]+>', ' ', cleaned_text)
+        # Remove all remaining HTML tags without adding spaces where not needed
+        cleaned_text = re.sub(r'<[^>]+>', '', cleaned_text)
         
         # Decode HTML entities
         cleaned_text = html.unescape(cleaned_text)
         
-        # Fix extra spacing
-        cleaned_text = re.sub(r'\n\s+\n', '\n\n', cleaned_text)  # Remove lines with just whitespace
-        cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)   # Limit to two consecutive newlines
-        cleaned_text = re.sub(r' {2,}', ' ', cleaned_text)       # Remove multiple spaces
+        # Clean up whitespace more conservatively
+        cleaned_text = re.sub(r' {2,}', ' ', cleaned_text)  # Remove multiple spaces
+        cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)  # Limit to two consecutive newlines
         
-        # Detect and preserve common newsletter section headers
+        # Preserve common newsletter section headers without adding excessive newlines
         section_headers = [
             r'(WHAT\'S NEW)',
             r'(IN THE NEWS)',
@@ -131,14 +136,19 @@ class GmailService:
             r'(LAUNCHES)',
             r'(UPCOMING EVENTS)',
             r'(FUNDING)',
-            r'(T\s*L\s*D\s*R)'
+            r'(T\s*L\s*D\s*R)',
+            r'(News\s*&\s*Trends)'
         ]
         
         for pattern in section_headers:
-            cleaned_text = re.sub(pattern, r'\n\n\1\n', cleaned_text, flags=re.IGNORECASE)
+            cleaned_text = re.sub(pattern, r'\n\n\1', cleaned_text, flags=re.IGNORECASE)
         
-        # Preserve links when numbered like: "Sign up [1]" and convert to Notion-readable format
-        cleaned_text = re.sub(r'\[(\d+)\]', r'[^\1]', cleaned_text)
+        # Simple handling of content with reading time indicators
+        cleaned_text = re.sub(r'(\(\d+\s+minute[s]?\s+read\))', r' \1', cleaned_text)
+        
+        # Final cleanup of extra whitespace
+        cleaned_text = re.sub(r'^\s+', '', cleaned_text)  # Remove leading whitespace
+        cleaned_text = re.sub(r'\s+$', '', cleaned_text)  # Remove trailing whitespace
         
         return cleaned_text.strip()
     

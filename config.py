@@ -22,18 +22,19 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 NOTION_DATABASE_PROPERTIES = {
     "Name": "title",                     # Newsletter title
     "Source": "url",                      # Link to original email
+    "Web Source": "url",                  # Link to web version
     "Category": "select",                 # Category of content
     "Date": "date",                       # Date received
-    "Description": "rich_text",           # Email body preview
-    "Sender": "rich_text"                 # Email sender
+    "Description": "rich_text"            # Email body preview
 }
 
 # Configuration settings
 SETTINGS = {
-    "check_interval_minutes": 5,          # Time between email checks
-    "max_emails_per_run": 50,             # Maximum emails to process in one run
+    "check_interval_minutes": 30,         # How often to check for new emails
+    "max_emails_per_run": 10,             # Maximum emails to process per run
+    "history_days": 7,                    # How many days back to check for emails
+    "batch_save_count": 5,                # Save processed IDs after this many emails
     "categorization_threshold": 0.1,      # Minimum confidence to assign a category
-    "description_max_length": 1990,       # Maximum description length
-    "batch_save_count": 10,               # Save processed IDs after batch
-    "history_days": 7                     # Initial history days to check
+    "use_web_scraping": True,             # Whether to try web scraping first
+    "scraping_timeout": 10                # Timeout for web scraping requests in seconds
 } 

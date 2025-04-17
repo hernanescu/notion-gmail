@@ -1,0 +1,620 @@
+<html lang="en" prefix="og: https://ogp.me/ns#"><head><meta http-equiv="Content-Type" content="text/html charset=UTF-8"><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><meta name="x-apple-disable-message-reformatting"><title>TLDR InfoSec</title><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><style type="text/css">
+			:root {
+				color-scheme: light dark; supported-color-schemes: light dark;
+			}
+			
+			*,
+			*:after,
+			*:before {
+				-webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box;
+			}
+			
+			* {
+				-ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;
+			}
+			
+			html,
+			body,
+			.document {
+				width: 100% !important; height: 100% !important; margin: 0; padding: 0;
+			}
+			
+			body {
+				-webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;
+			}
+			
+			div[style*="margin: 16px 0"] {
+				margin: 0 !important;
+			}
+			
+			table,
+			td {
+				mso-table-lspace: 0pt; mso-table-rspace: 0pt;
+			}
+			
+			table {
+				border-spacing: 0; border-collapse: collapse; table-layout: fixed; margin: 0 auto;
+			}
+			
+			img {
+				-ms-interpolation-mode: bicubic; max-width: 100%; border: 0;
+			}
+			
+			*[x-apple-data-detectors] {
+				color: inherit !important; text-decoration: none !important;
+			}
+			
+			.x-gmail-data-detectors,
+			.x-gmail-data-detectors *,
+			.aBn {
+				border-bottom: 0 !important; cursor: default !important;
+			}
+			
+			.btn {
+				-webkit-transition: all 200ms ease; transition: all 200ms ease;
+			}
+			
+			.btn:hover {
+				background-color: #f67575; border-color: #f67575;
+			}
+			
+			* {
+				font-family: Arial, Helvetica, sans-serif; font-size: 18px;
+			}
+			
+			@media screen and (max-width: 600px) {
+				.container {
+					width: 100%; margin: auto;
+				}
+				.stack {
+					display: block!important; width: 100%!important; max-width: 100%!important;
+				}
+				.btn {
+					display: block; width: 100%; text-align: center;
+				}
+			}
+			
+			body,
+			p,
+			td,
+			tr,
+			.body,
+			table,
+			h1,
+			h2,
+			h3,
+			h4,
+			h5,
+			h6,
+			div,
+			span {
+				background-color: #FEFEFE !important; color: #010101 !important;
+			}
+			
+			@media (prefers-color-scheme: dark) {
+				body,
+				p,
+				td,
+				tr,
+				.body,
+				table,
+				h1,
+				h2,
+				h3,
+				h4,
+				h5,
+				h6,
+				div,
+				span {
+					background-color: #27292D !important; color: #FEFEFE !important;
+				}
+			}
+			
+			a {
+				color: inherit !important; text-decoration: underline !important;
+			}
+
+		</style><!--[if mso | ie]>
+		<style type="text/css">
+			a {
+				background-color: #FEFEFE !important; color: #010101 !important;
+			}
+			@media (prefers-color-scheme: dark) {
+				a {
+					background-color: #27292D !important; color: #FEFEFE !important;
+				}
+			}
+	 </style>
+			<![endif]--><meta name="robots" content="noindex,nofollow"><meta name="twitter:card" content="summary_large_image"><meta property="og:image" content="https://eomail3.com/preview.png?p=76d76482-1b6d-11f0-9a00-cf0ea9d9bf4d&amp;pt=campaign&amp;t=1744896456&amp;size=opengraph-preview&amp;s=0cbfb228dc86c9a9dc2e19756351891e2584784903d328971014dad0a3004c75"><meta property="og:url" content="https://a.tldrnewsletter.com/web-version?ep=1&amp;lc=db6598fc-0109-11f0-ba00-85ee00330e58&amp;p=76d76482-1b6d-11f0-9a00-cf0ea9d9bf4d&amp;pt=campaign&amp;t=1744895951&amp;s=348a2ee47de114a84d074b898cc99a0d20e2ff4f1ce5317dd0bf15cca19e912f"><meta property="og:title" content="Two Apple Zero Days 🍎, Ransomware Target Against S3 🪣, CVE renewed for 11 months 🛡"><meta property="og:description" content="Apple has released emergency security updates to patch two new zero-day vulnerabilities exploited in sophisticated attacks against iPhones"></head><body class>
+
+
+
+
+
+<div style="display: none; max-height: 0px; overflow: hidden;">Apple has released emergency security updates to patch two new zero-day vulnerabilities exploited in sophisticated attacks against iPhones ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌  ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ </div>
+<div style="display: none; max-height: 0px; overflow: hidden;">
+<br>
+</div>
+
+<table align="center" class="document"><tbody><tr><td valign="top">
+
+<table align="center" cellpadding="0" cellspacing="0" class="container" width="600"><tbody><tr><td>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td bgcolor class="container">
+
+<table width="100%"><tbody><tr><td class="container">
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" style="margin-top: 0px;" width="100%"><tbody><tr><td style="padding: 0px;">
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div style="text-align: center;">
+<span style="margin-right: 0px;"><a href="https://tldr.tech/infosec?utm_source=tldrinfosec" target="_blank"><span>Sign Up</span></a>
+|<span style="margin-right: 2px; margin-left: 2px;"><a href="https://advertise.tldr.tech/?utm_source=tldrinfosec&amp;utm_medium=newsletter&amp;utm_campaign=advertisetopnav" target="_blank"><span>Advertise</span></a></span>|<span style="margin-left: 2px;"><a href="https://a.tldrnewsletter.com/web-version?ep=1&amp;lc=db6598fc-0109-11f0-ba00-85ee00330e58&amp;p=76d76482-1b6d-11f0-9a00-cf0ea9d9bf4d&amp;pt=campaign&amp;t=1744895951&amp;s=348a2ee47de114a84d074b898cc99a0d20e2ff4f1ce5317dd0bf15cca19e912f"><span>View Online</span></a></span>
+<br>
+</span></div>
+</td></tr></tbody></table>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="text-align: center;"><span style="--darkreader-inline-color:#3db3ff; color: rgb(51, 175, 255) !important; font-size: 30px;">T</span><span style="font-size: 30px;"><span style="color: rgb(232, 192, 96) !important; --darkreader-inline-color:#e8c163; font-size:30px;">L</span><span style="color: rgb(101, 195, 173) !important; --darkreader-inline-color:#6ec7b2; font-size:30px;">D</span></span><span style="--darkreader-inline-color:#dd6e6e; color: rgb(220, 107, 107) !important; font-size: 30px;">R</span></td></tr></tbody></table>
+<br>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td align="center" height="20" style="vertical-align:middle !important;" valign="middle" width="100%"><strong style="vertical-align:middle !important; height: 100%;">Together With </strong>
+<a href="https://go.flashpoint.io/2025-global-threat-intelligence-report?utm_campaign=Resource_RP_GTI_2025&amp;utm_source=tldrinfosec&amp;utm_medium=newsletter&amp;sfcampaign_id=701Rc00000MTXokIAH"><img src="https://images.tldr.tech/flashpoint.png" valign="middle" style="vertical-align: middle !important; height: 100%;" alt="Flashpoint"></a></td></tr></tbody></table>
+
+<table style="table-layout: fixed; width:100%;" width="100%"><tbody><tr><td style="padding:0;border-collapse:collapse;border-spacing:0;margin:0;">
+<div style="text-align: center;">
+
+<h1><strong>TLDR Information Security <span id="date">2025-04-17</span></strong></h1>
+</div>
+</td></tr></tbody></table>
+
+<table style="table-layout: fixed; width:100%;" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://go.flashpoint.io/2025-global-threat-intelligence-report?utm_campaign=Resource_RP_GTI_2025&amp;utm_source=tldrinfosec&amp;utm_medium=newsletter&amp;sfcampaign_id=701Rc00000MTXokIAH">
+                                    <span>
+                                        <strong>What we learned about 2025 cyber threats from analyzing 3.6 petabytes of web data (Sponsor)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    Flashpoint's Threat Intelligence Report looks at +3.6 petabytes of data from the hardest-to-reach corners of the web — revealing 2.1B stolen credentials and 5,742 ransomware attacks in 2024, with five major RaaS groups responsible for nearly half.<p></p><p>Get a <a href="https://go.flashpoint.io/2025-global-threat-intelligence-report?utm_campaign=Resource_RP_GTI_2025&amp;utm_source=tldrinfosec&amp;utm_medium=newsletter&amp;sfcampaign_id=701Rc00000MTXokIAH" target="_blank"><span>free copy of the report</span></a> to discover:</p>
+
+<ul>
+<li>Current threats — from infostealers to the growing impact of geopolitical tensions</li>
+<li><a href="https://go.flashpoint.io/2025-global-threat-intelligence-report?utm_campaign=Resource_RP_GTI_2025&amp;utm_source=tldrinfosec&amp;utm_medium=newsletter&amp;sfcampaign_id=701Rc00000MTXokIAH" target="_blank"><span>Tactics, techniques, and procedures (TTPs)</span></a> used by today's most prolific threat actors, including ransomware-as-a-service groups and malware developers.</li>
+<li>How to reduce critical patching workloads by 83% and focus on the real threats.</li>
+</ul>
+
+<p>📥 <a href="https://go.flashpoint.io/2025-global-threat-intelligence-report?utm_campaign=Resource_RP_GTI_2025&amp;utm_source=tldrinfosec&amp;utm_medium=newsletter&amp;sfcampaign_id=701Rc00000MTXokIAH" target="_blank"><span>Download the 2025 Global Threat Intelligence Report</span></a>
+
+
+</p>
+</span></span></div>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+</td></tr>
+<tr><td class="container">
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td style="padding: 0px;">
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding-top: 0px; padding-bottom: 0px;">
+<div class="text-block">
+<div style="text-align: center;"><span style="font-size: 36px;">🔓</span></div></div>
+</td></tr></tbody></table>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding-top: 0px; padding-bottom: 0px;">
+<div class="text-block">
+<div style="text-align: center;">
+
+<h1><strong>Attacks &amp; Vulnerabilities</strong></h1>
+</div>
+</div>
+</td></tr></tbody></table>
+
+<table style="table-layout: fixed; width: 100%;" width="100%"><tbody><tr><td style="padding:0;border-collapse:collapse;border-spacing:0;margin:0;" valign="top">
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://arstechnica.com/security/2025/04/crucial-cve-flaw-tracking-database-narrowly-avoids-closure-to-dhs-cuts/?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>CVE, global source of cybersecurity info, was hours from being cut by DHS (3 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    The Common Vulnerability and Exposures (CVE) repository, a 25-year-old program run by MITRE for DHS, serves as the global cybersecurity standard for identifying and documenting security vulnerabilities. Yesterday, there were rumors that MITRE's contract would expire, but it has received an 11-month extension from CISA, averting potential widespread disruption to vulnerability management worldwide.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://www.bleepingcomputer.com/news/security/apple-fixes-two-zero-days-exploited-in-targeted-iphone-attacks/?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>Apple Fixes Two Zero-Days Exploited in Targeted iPhone Attacks (2 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    Apple has released emergency security updates to patch two new zero-day vulnerabilities exploited in sophisticated attacks against iPhones. The first vulnerability is a flaw in CoreAudio, which can be exploited by processing an audio stream in a malicious file to execute remote code. The second vulnerability is a flawed RPAC that allows attackers with read or write access to bypass Pointer Authentication, which is a security feature to protect against memory vulnerabilities.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://links.tldrnewsletter.com/B0TRiE">
+                                    <span>
+                                        <strong>Huge Ransomware Campaign Targets AWS S3 Storage (3 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    Security researchers have discovered a publicly accessible server containing 1,229 unique AWS credentials. Upon investigation, the researchers found that the active keys were used in S3 ransomware campaigns, where the attackers utilized SSE-C to encrypt S3 bucket data and demanded 0.3 BTC (~$25,000) per victim. In some cases, the highly automated attackers were willing to offer a “proof of decryption” test file restoration.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding-top: 0px; padding-bottom: 0px;">
+<div class="text-block">
+<div style="text-align: center;"><span style="font-size: 36px;">🧠</span></div>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding-top: 0px; padding-bottom: 0px;">
+<div class="text-block">
+<div style="text-align: center;">
+
+<h1><strong>Strategies &amp; Tactics</strong></h1>
+</div>
+</div>
+</td></tr></tbody></table>
+
+<table style="table-layout: fixed; width: 100%;" width="100%"><tbody><tr><td style="padding:0;border-collapse:collapse;border-spacing:0;margin:0;" valign="top">
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://tierzerosecurity.co.nz/2025/04/14/edv.html?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>EDV - Endpoint Detection &amp; Vibes (4 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    EDV is a tool that feeds Windows Sysmon security events to Microsoft's Copilot AI through WebSocket connections, asking it to identify malicious activity. Testing with known attack techniques showed Copilot could detect about 40% of malicious events not blocked by Windows Defender, though with inconsistent results and false positives.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://medium.com/@shaikrief2/access-denied-not-always-hunting-idors-and-access-control-flaws-2ed55c907466?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>Access Denied? Not Always! Hunting IDORs and Access Control Flaws (9 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    IDOR vulnerabilities occur when attackers manipulate direct object references like IDs in URLs to access unauthorized data. As a common form of Broken Access Control, these flaws are prevalent in web applications, relatively easy to find, and highly impactful. This guide walks through how bug bounty hunters regularly exploit it.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://www.diegowritesa.blog/2025/04/detecting-c2-jittered-beacons-with.html?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>Detecting C2-Jittered Beacons with Frequency Analysis (7 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    Frequency analysis is a technique that allows for the detection of anomalies in a set of data. This post details how Fourier Transforms can be used to shift data to the frequency domain and then detect C2 beaconing behavior. When a C2 beacon utilizes jitter to vary its periodicity, a sliding window must be used to properly detect the activity.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding-top: 0px; padding-bottom: 0px;">
+<div class="text-block">
+<div style="text-align: center;"><span style="font-size: 36px;">🧑‍💻</span></div>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding-top: 0px; padding-bottom: 0px;">
+<div class="text-block">
+<div style="text-align: center;">
+
+<h1><strong>Launches &amp; Tools</strong></h1>
+</div>
+</div>
+</td></tr></tbody></table>
+
+<table style="table-layout: fixed; width: 100%;" width="100%"><tbody><tr><td style="padding:0;border-collapse:collapse;border-spacing:0;margin:0;" valign="top">
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://www.symbioticsec.ai/solution/ai-code-security?utm_source=ad&amp;utm_medium=tldr&amp;utm_campaign=v1">
+                                    <span>
+                                        <strong>Symbiotic brings AI detection, remediation, and education directly into the IDE (Sponsor)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    Developers are moving fast - your security should too. <a href="https://www.symbioticsec.ai/solution/ai-code-security?utm_source=ad&amp;utm_medium=tldr&amp;utm_campaign=v1" target="_blank"><span>Symbiotic Security v1</span></a> helps you ship secure code without slowing down. With AI-powered remediation, real-time contextual training, and an AI chat assistant built into your IDE, security works with developers to accelerate their flow. Teams can save an estimated $750+ per developer, per month. Speed and security, finally aligned. <a href="https://www.symbioticsec.ai/solution/ai-code-security?utm_source=ad&amp;utm_medium=tldr&amp;utm_campaign=v1" target="_blank"><span>Get started.</span></a>
+</span>
+</span>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://aurascape.ai/?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>Aurascape (Product Launch)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    Aurascape helps corporate IT departments monitor AI employee usage across thousands of AI applications—both approved and unauthorized. The technology tracks interactions, decodes prompt-response data, and evaluates security risks, even for less common AI tools.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://github.com/ComplianceAsCode/content?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>Content (GitHub Repo)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    Security automation content in SCAP, Bash, Ansible, and other formats
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://github.com/cdong1012/ollvm-unflattener?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>ollvm-unflattener (GitHub Repo)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    ollvm-unflattener is a Python tool to deobfuscate control flow flattening applied by OLLVM.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding-top: 0px; padding-bottom: 0px;">
+<div class="text-block">
+<div style="text-align: center;"><span style="font-size: 36px;">🎁</span></div></div>
+</td></tr></tbody></table>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding-top: 0px; padding-bottom: 0px;">
+<div class="text-block">
+<div style="text-align: center;"><strong><h1>Miscellaneous</h1></strong></div>
+</div>
+</td></tr></tbody></table>
+
+<table bgcolor style="table-layout: fixed; width: 100%;" width="100%"><tbody><tr><td style="padding:0;border-collapse:collapse;border-spacing:0;margin:0;" valign="top">
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://www.theregister.com/2025/04/16/dutch_ransomware_study/?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>Guess what happens when ransomware fiends find 'insurance' 'policy' in your files (4 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    Companies with cyber insurance face ransomware demands 2.8 times higher than uninsured victims, as criminals specifically search for insurance policies during attacks. Insured victims pay more often (44% vs 24%) and pay significantly larger amounts.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://blog.runreveal.com/security-operations-with-runreveals-mcp-server/?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>Security Operations with RunReveal's MCP Server (4 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    SIEM provider RunReveal released an MCP server for use with its product. In this post, RunReveal provides insights into some ways that its customers are using the MCP server for threat hunting with Cursor, investigating GuardDuty alerts, and tuning and testing alerts. RunReveal believes that enriching and standardizing data to make it easier for LLMs to query is the future of its product.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://googleprojectzero.blogspot.com/2025/04/the-windows-registry-adventure-6-kernel.html?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>The Windows Registry Adventure #6: Kernel-mode objects (66 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    This blog post focuses on kernel-mode registry objects essential for runtime hive management. It meticulously examines key internal structures, including _CMHIVE, _HHIVE, memory mapping mechanisms, cell maps, and key control blocks that collectively enable registry functionality like transaction management and synchronization. The post provides detailed explanations of these previously undocumented structures based on reverse engineering of Windows Server 2019, noting these findings apply to Windows 11 as well.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding-top: 0px; padding-bottom: 0px;">
+<div class="text-block">
+<div style="text-align: center;"><span style="font-size: 36px;">⚡</span></div></div>
+</td></tr></tbody></table>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding-top: 0px; padding-bottom: 0px;">
+<div class="text-block">
+<div style="text-align: center;">
+
+<h1><strong>Quick Links</strong></h1>
+</div>
+</div>
+</td></tr></tbody></table>
+
+<table bgcolor style="table-layout: fixed; width: 100%;" width="100%"><tbody><tr><td style="padding:0;border-collapse:collapse;border-spacing:0;margin:0;" valign="top">
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://www.securityweek.com/krebs-exits-sentinelone-after-security-clearance-pulled/?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>Krebs Exits SentinelOne After Security Clearance Pulled (2 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    Chris Krebs resigned from SentinelOne after his security clearance was revoked and a presidential order was issued to review CISA's conduct under his leadership.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://hackread.com/bidencash-market-leak-credit-cards-russian-forum/?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>BidenCash Market Dumps 1 Million Stolen Credit Cards on Russian Forum (3 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    BidenCash Market leaked over 910,000 stolen credit card records on a Russian forum without names but with card details.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+
+<table align="center" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<span>
+                                <a href="https://www.bleepingcomputer.com/news/microsoft/microsoft-warns-of-blue-screen-crashes-caused-by-april-updates/?utm_source=tldrinfosec">
+                                    <span>
+                                        <strong>Microsoft warns of blue screen crashes caused by April updates (2 minute read)</strong>
+                                    </span>
+</a>
+<br>
+<br>
+<span style='font-family: "Helvetica Neue", Helvetica, Arial, Verdana, sans-serif;'>
+                                    Microsoft has advised Windows 11 users of blue screen crashes following recent updates and suggests using Known Issue Rollback or Group Policy for fixes - deployment guidance is available on its support website.
+                                </span>
+</span>
+</div>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+
+
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td align="left" style="word-break: break-word; vertical-align: top; padding: 5px 10px;">
+
+<p style="padding: 0; margin: 0; font-size: 22px; color: #000000; line-height: 1.6; font-weight: bold;">
+Love TLDR? Tell your friends and get rewards!
+</p>
+</td></tr>
+<tr><td class="container" style="padding: 0px 10px 15px;">
+<div class="text-block">
+Share your referral link below with friends to get free TLDR swag!
+</div>
+</td></tr>
+<tr><td align="left" style="padding: 10px;">
+<div class="text-block">
+<a href="https://refer.tldr.tech/b59080e6/8" style="color: #464ba4; text-decoration: underline;">https://refer.tldr.tech/b59080e6/8</a>
+</div>
+</td></tr>
+<tr></tr>
+<tr><td align="left" style="padding:5px 10px;"><a href="https://hub.sparklp.co/sub_b791b3d6077a/8" style="font-size: 16px; line-height: 1.6;  padding: 10px 0; display: inline-block;  text-decoration: underline;"><span style="mso-text-raise:13pt; text-decoration: underline;">Track your referrals here.</span></a></td></tr></tbody></table>
+
+
+
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td align="left" style="word-break: break-word; vertical-align: top; padding: 5px 10px;">
+
+<p style="padding: 0; margin: 0; font-size: 22px; color: #000000; line-height: 1.6; font-weight: bold;">
+Want to advertise in TLDR? 📰
+</p>
+<div class="text-block" style="margin-top: 10px;">
+If your company is interested in reaching an audience of cybersecurity professionals and decision makers, you may want to <a href="https://advertise.tldr.tech/?utm_source=tldrinfosec&amp;utm_medium=newsletter&amp;utm_campaign=advertisecta"><strong><span>advertise with us</span></strong></a>.
+</div>
+<br>
+
+
+<p style="padding: 0; margin: 0; font-size: 22px; color: #000000; line-height: 1.6; font-weight: bold;">
+Want to work at TLDR? 💼
+</p>
+<div class="text-block" style="margin-top: 10px;">
+<a href="https://jobs.ashbyhq.com/tldr.tech" style="color: #0000EE; text-decoration: underline;" target="_blank"><strong>Apply here</strong></a> or send a friend's resume to <a href="/cdn-cgi/l/email-protection#305a5f524370445c54421e44555358" style="color: #0000EE; text-decoration: underline;"><span class="__cf_email__" data-cfemail="9af0f5f8e9daeef6fee8b4eefff9f2">[email&#160;protected]</span></a> and get $1k if we hire them!
+</div>
+<br>
+<div class="text-block">
+If you have any comments or feedback, just respond to this email!
+<br>
+<br> Thanks for reading,
+<br>
+<a href="https://www.linkedin.com/in/prasannagautam/"><span>Prasanna Gautam</span></a>, <a href="https://www.linkedin.com/in/ericfernandezdelcampo/"><span>Eric Fernandez</span></a> &amp; <a href="https://www.linkedin.com/in/sammy-tbeile/"><span>Sammy Tbeile</span></a>
+<br>
+<br>
+</div>
+<br>
+</td></tr></tbody></table>
+
+<table align="center" bgcolor cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="container" style="padding: 15px 15px;">
+<div class="text-block">
+<a href="https://tldr.tech/infosec/manage?email=hernan%40deployr.ai">Manage your subscriptions</a> to our other newsletters on tech, startups, and programming. Or if TLDR Information Security isn't for you, please <a href="https://a.tldrnewsletter.com/unsubscribe?ep=1&amp;l=8d9cea11-3e94-11ed-9a32-0241b9615763&amp;lc=db6598fc-0109-11f0-ba00-85ee00330e58&amp;p=76d76482-1b6d-11f0-9a00-cf0ea9d9bf4d&amp;pt=campaign&amp;pv=4&amp;spa=1744894883&amp;t=1744895951&amp;s=1402b681c328fb2e63d11c1b17eec24feebed776bbe5623ea8cad319503f89aa">unsubscribe</a>.
+<br>
+</div>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
