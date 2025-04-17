@@ -36,7 +36,7 @@ class NotionService:
         """Create a new entry in Notion database."""
         try:
             # Prepare source links
-            source_link = f"https://mail.google.com/mail/u/0/#inbox/{email_data['message_id']}"
+            email_link = f"https://mail.google.com/mail/u/0/#inbox/{email_data['message_id']}"
             
             # Format other category scores for reference
             other_categories = ", ".join([f"{cat}: {score:.2f}" for cat, score in all_scores.items() if cat != category and score > 0])
@@ -55,16 +55,29 @@ class NotionService:
             if "Category" in config.NOTION_DATABASE_PROPERTIES and "Category" in self.available_properties:
                 properties["Category"] = {"select": {"name": category}}
             
+            # Prioritize the web URL as the primary Source if available
             if "Source" in config.NOTION_DATABASE_PROPERTIES and "Source" in self.available_properties:
-                properties["Source"] = {"url": source_link}
+                # Use the web URL as primary source if available, otherwise use email link
+                if email_data.get('source_url'):
+                    properties["Source"] = {"url": email_data['source_url']}
+                    logger.debug(f"Using source URL as primary source: {email_data['source_url']}")
+                else:
+                    properties["Source"] = {"url": email_link}
+                    logger.debug(f"Using email link as primary source: {email_link}")
                 
             if "Date" in config.NOTION_DATABASE_PROPERTIES and "Date" in self.available_properties:
                 properties["Date"] = {"date": {"start": email_data['date']}}
             
-            # Add the source URL if we scraped it from the web
-            if "Web Source" in config.NOTION_DATABASE_PROPERTIES and "Web Source" in self.available_properties and email_data.get('source_url'):
-                properties["Web Source"] = {"url": email_data['source_url']}
-                
+            # Add the email URL as secondary source if we used web scraping
+            if "Web Source" in config.NOTION_DATABASE_PROPERTIES and "Web Source" in self.available_properties:
+                if email_data.get('was_scraped') or email_data.get('source_url'):
+                    # If we used web scraping or have a source URL, use email link as secondary source
+                    properties["Web Source"] = {"url": email_link}
+                    logger.debug(f"Setting Web Source to email link: {email_link}")
+                else:
+                    # Otherwise leave it unset or set to None
+                    properties["Web Source"] = {"url": None}
+            
             # We'll move the full content to the page body, but still keep a short preview in the Description field
             if "Description" in config.NOTION_DATABASE_PROPERTIES and "Description" in self.available_properties:
                 # Clean up the preview to remove any formatting characters or newlines
@@ -215,28 +228,89 @@ class NotionService:
                             }
                         ]
                     }
-                },
-                {
+                }
+            ])
+            
+            # Add source links
+            if email_data.get('source_url'):
+                # Add web version link
+                children.append({
                     "object": "block",
-                    "type": "divider",
-                    "divider": {}
-                },
-                {
-                    "object": "block",
-                    "type": "heading_2",
-                    "heading_2": {
+                    "type": "paragraph",
+                    "paragraph": {
                         "rich_text": [
                             {
                                 "type": "text",
                                 "text": {
-                                    "content": "Newsletter Content"
+                                    "content": "Newsletter URL: "
+                                },
+                                "annotations": {
+                                    "bold": True
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": "Web Version",
+                                    "link": {"url": email_data['source_url']}
+                                },
+                                "annotations": {
+                                    "color": "blue"
                                 }
                             }
-                        ],
-                        "color": "blue_background"
+                        ]
                     }
+                })
+                
+                # Add original email link
+                children.append({
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": "Original Email: "
+                                },
+                                "annotations": {
+                                    "bold": True
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": "Gmail Link",
+                                    "link": {"url": email_link}
+                                }
+                            }
+                        ]
+                    }
+                })
+            
+            # Add separator
+            children.append({
+                "object": "block",
+                "type": "divider",
+                "divider": {}
+            })
+            
+            # Add content header
+            children.append({
+                "object": "block",
+                "type": "heading_2",
+                "heading_2": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": "Newsletter Content"
+                            }
+                        }
+                    ],
+                    "color": "blue_background"
                 }
-            ])
+            })
             
             # Reserve slots for content (Notion has 100 block limit)
             # Header section took up 7 blocks, leave some room for links section

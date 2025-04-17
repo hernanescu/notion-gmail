@@ -31,7 +31,7 @@ NOTION_DATABASE_PROPERTIES = {
 # Configuration settings
 SETTINGS = {
     "check_interval_minutes": 30,         # How often to check for new emails
-    "max_emails_per_run": 10,             # Maximum emails to process per run
+    "max_emails_per_run": 100,             # Maximum emails to process per run
     "history_days": 7,                    # How many days back to check for emails
     "batch_save_count": 5,                # Save processed IDs after this many emails
     "categorization_threshold": 0.1,      # Minimum confidence to assign a category

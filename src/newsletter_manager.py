@@ -5,6 +5,7 @@ import os
 import logging
 from datetime import datetime, timedelta
 from typing import Set, Dict, List, Optional, Tuple
+import re
 
 import config
 from src.gmail_service import GmailService
@@ -34,8 +35,8 @@ class NewsletterManager:
     
     def process_new_emails(self):
         """Process new emails from monitored senders."""
-        if not config.MONITORED_SENDERS:
-            logger.warning("No monitored senders configured. Please add email addresses to MONITORED_SENDERS in config.py")
+        if not self.gmail or not self.notion:
+            logger.error("Services not initialized properly")
             return
             
         try:
@@ -79,6 +80,7 @@ class NewsletterManager:
                     email_data['links'] = web_content['links']
                     email_data['sections'] = web_content['sections']
                     email_data['was_scraped'] = True
+                    email_data['source_url'] = web_content['source_url']
                     
                     # Categorize the web-scraped content
                     category, confidence, all_scores = self.processor.categorize_content(
@@ -97,6 +99,21 @@ class NewsletterManager:
                     # Flag that this wasn't web-scraped
                     email_data['was_scraped'] = False
                     email_data['sections'] = None
+                    
+                    # Extract first content link from email to use as source URL if available
+                    content_link = email_data['links'][0] if email_data['links'] else None
+                    if content_link:
+                        # Check if it's a likely newsletter link (heuristic based on URL patterns)
+                        newsletter_patterns = [
+                            r'newsletter', r'campaign', r'bulletin', r'digest', r'update',
+                            r'news\.', r'blog\.', r'article', r'post'
+                        ]
+                        
+                        is_newsletter_link = any(re.search(pattern, content_link, re.IGNORECASE) for pattern in newsletter_patterns)
+                        
+                        if is_newsletter_link:
+                            logger.info(f"Using first link as source URL: {content_link}")
+                            email_data['source_url'] = content_link
                 
                 # Create Notion entry
                 self.notion.create_entry(email_data, category, confidence, all_scores)
@@ -155,6 +172,13 @@ class NewsletterManager:
                 
                 for content_item in section['content']:
                     combined_text += f"{content_item}\n\n"
+            
+            # Ensure we have a valid source URL
+            if not final_url:
+                logger.warning("Final URL is empty, using original online link")
+                final_url = online_link
+            
+            logger.info(f"Web scraping successful, using source URL: {final_url}")
             
             # Return the improved content
             return {

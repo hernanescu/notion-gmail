@@ -63,6 +63,9 @@ class WebScraper:
         try:
             logger.info(f"Scraping content from: {url}")
             
+            # Store the original URL as the default return value
+            final_url = url
+            
             # Use the configured timeout from settings
             timeout = config.SETTINGS["scraping_timeout"]
             
@@ -70,6 +73,11 @@ class WebScraper:
             response.raise_for_status()
             
             logger.debug(f"Response received: {len(response.text)} bytes, status {response.status_code}")
+            
+            # Update final URL in case of redirects
+            if response.url != url:
+                final_url = response.url
+                logger.debug(f"URL redirected to: {final_url}")
             
             soup = BeautifulSoup(response.text, 'html.parser')
             
@@ -106,7 +114,8 @@ class WebScraper:
             if sections:
                 logger.info(f"Successfully extracted content using TLDR-specific method: {len(sections)} sections")
                 self._log_extracted_content(sections)
-                return sections, links, url
+                logger.debug(f"Returning final URL: {final_url}")
+                return sections, links, final_url
             
             # Generic newsletter handling
             logger.info("Attempting generic newsletter extraction method")
@@ -114,7 +123,8 @@ class WebScraper:
             if sections:
                 logger.info(f"Successfully extracted content using generic method: {len(sections)} sections")
                 self._log_extracted_content(sections)
-                return sections, links, url
+                logger.debug(f"Returning final URL: {final_url}")
+                return sections, links, final_url
             
             # Fall back to basic content extraction
             logger.warning(f"Using basic content extraction for {url}")
@@ -124,10 +134,14 @@ class WebScraper:
                 self._log_extracted_content(sections)
             else:
                 logger.error("Basic extraction failed to find any content")
-            return sections, links, url
+            
+            logger.debug(f"Returning final URL: {final_url}")
+            return sections, links, final_url
             
         except Exception as e:
             logger.error(f"Error scraping {url}: {str(e)}", exc_info=True)
+            # Even on error, return the original URL
+            logger.debug(f"Returning original URL due to error: {url}")
             return None, None, url
     
     def _log_extracted_content(self, sections: List[Dict]):
@@ -253,8 +267,22 @@ class WebScraper:
                                 
                                 # If we found both title and description, add as an article
                                 if article_title and description:
-                                    articles.append(f"{article_title}\n{description}")
-                                    logger.debug(f"Found article: {article_title[:50]}...")
+                                    # Format the title and description more nicely
+                                    # Convert "Title (X minute read)" to "Title [X minute read]"
+                                    formatted_title = article_title
+                                    if '(' in article_title and ')' in article_title and 'read' in article_title:
+                                        title_parts = article_title.split('(')
+                                        main_title = title_parts[0].strip()
+                                        read_time = title_parts[1].strip().rstrip(')')
+                                        formatted_title = f"{main_title} [{read_time}]"
+                                    
+                                    # Clean up whitespace in the description
+                                    formatted_desc = re.sub(r'\s+', ' ', description).strip()
+                                    
+                                    # Format as a proper article with title and description
+                                    article_text = f"**{formatted_title}**\n\n{formatted_desc}"
+                                    articles.append(article_text)
+                                    logger.debug(f"Found article: {formatted_title[:50]}...")
                         
                         # If we didn't find articles with the above method, try another approach
                         if not articles:
@@ -343,9 +371,22 @@ class WebScraper:
                             if span_elem:
                                 description = span_elem.text.strip()
                                 if description and len(description) > 30:
-                                    content_items.append(f"{article_title}\n{description}")
+                                    # Format the title and description nicely
+                                    formatted_title = article_title
+                                    if '(' in article_title and ')' in article_title and 'read' in article_title:
+                                        title_parts = article_title.split('(')
+                                        main_title = title_parts[0].strip()
+                                        read_time = title_parts[1].strip().rstrip(')')
+                                        formatted_title = f"{main_title} [{read_time}]"
+                                    
+                                    # Clean up whitespace in the description
+                                    formatted_desc = re.sub(r'\s+', ' ', description).strip()
+                                    
+                                    # Format as a proper article
+                                    article_text = f"**{formatted_title}**\n\n{formatted_desc}"
+                                    content_items.append(article_text)
                                     articles_found = True
-                                    logger.debug(f"Extracted article: {article_title[:50]}...")
+                                    logger.debug(f"Extracted article: {formatted_title[:50]}...")
                     
                     # If we didn't find articles, try to extract paragraphs directly
                     if not articles_found:
@@ -410,8 +451,21 @@ class WebScraper:
                         desc = clone.text.strip()
                         
                         if title and desc and len(desc) > 30:
-                            articles.append(f"{title}\n{desc}")
-                            logger.debug(f"Extracted article from text block: {title[:50]}...")
+                            # Format the title and description nicely
+                            formatted_title = title
+                            if '(' in title and ')' in title and 'read' in title:
+                                title_parts = title.split('(')
+                                main_title = title_parts[0].strip()
+                                read_time = title_parts[1].strip().rstrip(')')
+                                formatted_title = f"{main_title} [{read_time}]"
+                            
+                            # Clean up whitespace in the description
+                            formatted_desc = re.sub(r'\s+', ' ', desc).strip()
+                            
+                            # Format as a proper article
+                            article_text = f"**{formatted_title}**\n\n{formatted_desc}"
+                            articles.append(article_text)
+                            logger.debug(f"Extracted article from text block: {formatted_title[:50]}...")
                 
                 if articles:
                     sections.append({
