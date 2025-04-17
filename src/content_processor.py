@@ -3,7 +3,7 @@ Content processor module for categorizing and processing email content.
 """
 import logging
 import os
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 
 import config
 from src.llm_service import LLMService
@@ -13,23 +13,37 @@ logger = logging.getLogger("gmail_notion_manager.processor")
 class ContentProcessor:
     """Handles content classification and processing."""
     
-    def __init__(self):
-        """Initialize the content processor."""
+    def __init__(self, llm_service: Optional[LLMService] = None):
+        """
+        Initialize the content processor.
+        
+        Args:
+            llm_service: Optional LLMService instance. If None, will create a new one if USE_LLM_CATEGORIZATION is enabled.
+        """
+        # Check if LLM categorization is enabled
         self.use_llm = os.getenv("USE_LLM_CATEGORIZATION", "false").lower() == "true"
         
+        # Use provided LLM service or create a new one if needed
         if self.use_llm:
-            self.llm_service = LLMService()
+            self.llm_service = llm_service if llm_service else LLMService()
             logger.info("Content processor initialized with LLM categorization")
         else:
+            self.llm_service = None
             logger.info("Content processor initialized with keyword-based categorization")
     
     def categorize_content(self, subject: str, content: str) -> Tuple[str, float, Dict[str, float]]:
         """
         Categorize content based on LLM or keywords with confidence score.
-        Returns tuple of (category, confidence_score, all_scores)
+        
+        Args:
+            subject: The newsletter subject line
+            content: The newsletter content
+            
+        Returns:
+            A tuple of (category, confidence_score, all_scores)
         """
         # Try LLM categorization if enabled
-        if self.use_llm:
+        if self.use_llm and self.llm_service:
             try:
                 category, confidence, all_scores, explanation = self.llm_service.categorize_content(subject, content)
                 
@@ -43,9 +57,22 @@ class ContentProcessor:
                 # If LLM failed, fall back to keyword-based approach
                 logger.info("LLM categorization failed, falling back to keyword-based approach")
             except Exception as e:
-                logger.error(f"Error in LLM categorization, falling back to keyword-based: {str(e)}")
+                logger.error(f"Error in LLM categorization, falling back to keyword-based: {type(e).__name__} - {str(e)}")
         
         # Keyword-based categorization (original implementation)
+        return self._keyword_categorize(subject, content)
+    
+    def _keyword_categorize(self, subject: str, content: str) -> Tuple[str, float, Dict[str, float]]:
+        """
+        Categorize content based on keyword matching.
+        
+        Args:
+            subject: The newsletter subject line
+            content: The newsletter content
+            
+        Returns:
+            A tuple of (category, confidence_score, all_scores)
+        """
         text = (subject + " " + content).lower()
         
         # Track keyword matches for each category
@@ -96,6 +123,13 @@ class ContentProcessor:
     def get_matched_keywords(self, text: str, category: str) -> List[str]:
         """
         Get the list of keywords from a category that match in the text.
+        
+        Args:
+            text: The text to search for keywords
+            category: The category whose keywords to check
+            
+        Returns:
+            A list of matching keywords
         """
         if category not in config.CATEGORIES:
             return []

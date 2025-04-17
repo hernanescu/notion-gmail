@@ -156,8 +156,13 @@ class WebScraper:
                 
                 # Log first few words of each content section to verify extraction
                 for i, content in enumerate(section.get("content", [])[:3]):  # Log up to 3 content items per section
-                    preview = content[:50] + "..." if len(content) > 50 else content
-                    logger.debug(f"Section '{section.get('name', 'Unnamed')}' item {i+1}: {preview}")
+                    # Content might be a dictionary if we've extracted article URLs
+                    if isinstance(content, dict):
+                        preview = content.get("text", "")[:50] + "..." if len(content.get("text", "")) > 50 else content.get("text", "")
+                        logger.debug(f"Section '{section.get('name', 'Unnamed')}' item {i+1}: {preview}")
+                    else:
+                        preview = content[:50] + "..." if len(content) > 50 else content
+                        logger.debug(f"Section '{section.get('name', 'Unnamed')}' item {i+1}: {preview}")
                 
             logger.info(f"Extracted content summary: {len(sections)} sections, {total_paragraphs} paragraphs")
             logger.info(f"Section names: {', '.join(section_names)}")
@@ -253,6 +258,7 @@ class WebScraper:
                         # First check for "a" tags with strong elements (typical article format)
                         for link in content_table.find_all('a'):
                             strong = link.find('strong')
+                            article_url = link.get('href', '')
                             if strong:
                                 article_title = strong.text.strip()
                                 
@@ -281,8 +287,22 @@ class WebScraper:
                                     
                                     # Format as a proper article with title and description
                                     article_text = f"**{formatted_title}**\n\n{formatted_desc}"
-                                    articles.append(article_text)
-                                    logger.debug(f"Found article: {formatted_title[:50]}...")
+                                    
+                                    # Instead of just adding the text, create a dict with text and url
+                                    if article_url and article_url.startswith('http'):
+                                        articles.append({
+                                            "text": article_text,
+                                            "url": article_url,
+                                            "title": formatted_title
+                                        })
+                                        logger.debug(f"Found article with URL: {formatted_title[:50]}... -> {article_url}")
+                                    else:
+                                        articles.append({
+                                            "text": article_text,
+                                            "url": None,
+                                            "title": formatted_title
+                                        })
+                                        logger.debug(f"Found article without URL: {formatted_title[:50]}...")
                         
                         # If we didn't find articles with the above method, try another approach
                         if not articles:
@@ -290,8 +310,22 @@ class WebScraper:
                             for elem in content_table.find_all(['p', 'span']):
                                 text = elem.text.strip()
                                 if text and len(text) > 50:  # Only include substantial text
-                                    section_content.append(text)
-                                    logger.debug(f"Added content: {text[:50]}...")
+                                    # Check if element is inside or near a link
+                                    parent_a = elem.find_parent('a')
+                                    if parent_a and parent_a.get('href', '').startswith('http'):
+                                        section_content.append({
+                                            "text": text,
+                                            "url": parent_a.get('href', ''),
+                                            "title": text[:50] + "..." if len(text) > 50 else text
+                                        })
+                                        logger.debug(f"Added content with URL: {text[:50]}...")
+                                    else:
+                                        section_content.append({
+                                            "text": text,
+                                            "url": None,
+                                            "title": None
+                                        })
+                                        logger.debug(f"Added content without URL: {text[:50]}...")
                         else:
                             # Add all the articles we found
                             section_content.extend(articles)

@@ -83,12 +83,20 @@ class NotionService:
             
             # We'll move the full content to the page body, but still keep a short preview in the Description field
             if "Description" in config.NOTION_DATABASE_PROPERTIES and "Description" in self.available_properties:
-                # Clean up the preview to remove any formatting characters or newlines
-                cleaned_preview = re.sub(r'[\n\r\t]+', ' ', email_data['body'])
-                cleaned_preview = re.sub(r'\s{2,}', ' ', cleaned_preview)
-                cleaned_preview = re.sub(r'[*#\-_]+', '', cleaned_preview)
-                # Ensure preview is under 2000 chars (Notion limit)
-                preview = cleaned_preview[:1900] + "..." if len(cleaned_preview) > 1900 else cleaned_preview
+                # Use LLM-generated summary if available, otherwise create a simple preview
+                if email_data.get('summary'):
+                    # Use the LLM-generated summary
+                    preview = email_data['summary']
+                    logger.debug(f"Using LLM-generated summary for description: {preview[:100]}...")
+                else:
+                    # Clean up the preview to remove any formatting characters or newlines
+                    cleaned_preview = re.sub(r'[\n\r\t]+', ' ', email_data['body'])
+                    cleaned_preview = re.sub(r'\s{2,}', ' ', cleaned_preview)
+                    cleaned_preview = re.sub(r'[*#\-_]+', '', cleaned_preview)
+                    # Ensure preview is under 2000 chars (Notion limit)
+                    preview = cleaned_preview[:1900] + "..." if len(cleaned_preview) > 1900 else cleaned_preview
+                    logger.debug(f"Using auto-generated preview for description: {preview[:100]}...")
+                
                 properties["Description"] = {"rich_text": [{"text": {"content": preview}}]}
                 
             # Add optional properties if configured AND if they exist in the database
@@ -541,44 +549,200 @@ class NotionService:
             # Add content paragraphs with length limits
             for content_item in section.get("content", []):
                 # Skip empty content
-                if not content_item.strip():
+                if not content_item:
                     continue
                 
-                # Check if content is a bullet point
-                if content_item.startswith('•') or content_item.startswith('*') or content_item.startswith('-'):
-                    # Split long bullet points
-                    for chunk in self._split_text_into_chunks(content_item[1:].strip(), 1900):
-                        blocks.append({
+                # Handle content item based on type
+                if isinstance(content_item, dict):
+                    # Extract text, url and title from the dictionary
+                    content_text = content_item.get("text", "").strip()
+                    content_url = content_item.get("url")
+                    content_title = content_item.get("title")
+                    
+                    if not content_text:
+                        continue
+                    
+                    # Parse the content to extract title and description
+                    title_match = re.match(r'\*\*(.+?)\*\*\s*\n+(.+)', content_text, re.DOTALL)
+                    
+                    if title_match:
+                        # We have a title and description format
+                        title = title_match.group(1).strip()
+                        description = title_match.group(2).strip()
+                        
+                        # Create a heading with the title (potentially linked)
+                        title_block = {
                             "object": "block",
-                            "type": "bulleted_list_item",
-                            "bulleted_list_item": {
+                            "type": "heading_3",
+                            "heading_3": {
                                 "rich_text": [
                                     {
                                         "type": "text",
                                         "text": {
-                                            "content": chunk
+                                            "content": title
                                         }
                                     }
                                 ]
                             }
-                        })
+                        }
+                        
+                        # Add URL to title if available
+                        if content_url:
+                            title_block["heading_3"]["rich_text"][0]["text"]["link"] = {"url": content_url}
+                            
+                        blocks.append(title_block)
+                        
+                        # Add description in chunks if needed
+                        for chunk in self._split_text_into_chunks(description, 1900):
+                            blocks.append({
+                                "object": "block",
+                                "type": "paragraph",
+                                "paragraph": {
+                                    "rich_text": [
+                                        {
+                                            "type": "text",
+                                            "text": {
+                                                "content": chunk
+                                            }
+                                        }
+                                    ]
+                                }
+                            })
+                            
+                        # If we have a URL, add it as a separate line for clarity
+                        if content_url:
+                            blocks.append({
+                                "object": "block",
+                                "type": "paragraph",
+                                "paragraph": {
+                                    "rich_text": [
+                                        {
+                                            "type": "text",
+                                            "text": {
+                                                "content": "Source: ",
+                                            },
+                                            "annotations": {
+                                                "bold": True
+                                            }
+                                        },
+                                        {
+                                            "type": "text",
+                                            "text": {
+                                                "content": content_url,
+                                                "link": {"url": content_url}
+                                            },
+                                            "annotations": {
+                                                "color": "blue"
+                                            }
+                                        }
+                                    ]
+                                }
+                            })
+                    else:
+                        # Just a regular paragraph, possibly with a link
+                        for chunk in self._split_text_into_chunks(content_text, 1900):
+                            paragraph_block = {
+                                "object": "block",
+                                "type": "paragraph",
+                                "paragraph": {
+                                    "rich_text": [
+                                        {
+                                            "type": "text",
+                                            "text": {
+                                                "content": chunk
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                            
+                            # Add URL if available
+                            if content_url:
+                                paragraph_block["paragraph"]["rich_text"][0]["text"]["link"] = {"url": content_url}
+                                
+                            blocks.append(paragraph_block)
                 else:
-                    # Split long paragraphs into multiple paragraph blocks
-                    for chunk in self._split_text_into_chunks(content_item, 1900):
-                        blocks.append({
-                            "object": "block",
-                            "type": "paragraph",
-                            "paragraph": {
-                                "rich_text": [
-                                    {
-                                        "type": "text",
-                                        "text": {
-                                            "content": chunk
+                    # Handle legacy string format
+                    content_str = content_item.strip()
+                    if not content_str:
+                        continue
+                    
+                    # Check if content is a bullet point
+                    if content_str.startswith('•') or content_str.startswith('*') or content_str.startswith('-'):
+                        # Split long bullet points
+                        for chunk in self._split_text_into_chunks(content_str[1:].strip(), 1900):
+                            blocks.append({
+                                "object": "block",
+                                "type": "bulleted_list_item",
+                                "bulleted_list_item": {
+                                    "rich_text": [
+                                        {
+                                            "type": "text",
+                                            "text": {
+                                                "content": chunk
+                                            }
                                         }
+                                    ]
+                                }
+                            })
+                    else:
+                        # Parse for title/description format
+                        title_match = re.match(r'\*\*(.+?)\*\*\s*\n+(.+)', content_str, re.DOTALL)
+                        
+                        if title_match:
+                            # We have a title and description format
+                            title = title_match.group(1).strip()
+                            description = title_match.group(2).strip()
+                            
+                            # Add title as a heading
+                            blocks.append({
+                                "object": "block",
+                                "type": "heading_3",
+                                "heading_3": {
+                                    "rich_text": [
+                                        {
+                                            "type": "text",
+                                            "text": {
+                                                "content": title
+                                            }
+                                        }
+                                    ]
+                                }
+                            })
+                            
+                            # Add description in chunks if needed
+                            for chunk in self._split_text_into_chunks(description, 1900):
+                                blocks.append({
+                                    "object": "block",
+                                    "type": "paragraph",
+                                    "paragraph": {
+                                        "rich_text": [
+                                            {
+                                                "type": "text",
+                                                "text": {
+                                                    "content": chunk
+                                                }
+                                            }
+                                        ]
                                     }
-                                ]
-                            }
-                        })
+                                })
+                        else:
+                            # Split regular paragraphs into multiple paragraph blocks
+                            for chunk in self._split_text_into_chunks(content_str, 1900):
+                                blocks.append({
+                                    "object": "block",
+                                    "type": "paragraph",
+                                    "paragraph": {
+                                        "rich_text": [
+                                            {
+                                                "type": "text",
+                                                "text": {
+                                                    "content": chunk
+                                                }
+                                            }
+                                        ]
+                                    }
+                                })
         
         return blocks
     
