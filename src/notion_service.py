@@ -38,6 +38,9 @@ class NotionService:
             # Prepare source links
             email_link = f"https://mail.google.com/mail/u/0/#inbox/{email_data['message_id']}"
             
+            # Extract explanation if available
+            explanation = all_scores.pop("__explanation__", None) if all_scores else None
+            
             # Format other category scores for reference
             other_categories = ", ".join([f"{cat}: {score:.2f}" for cat, score in all_scores.items() if cat != category and score > 0])
             
@@ -106,6 +109,11 @@ class NotionService:
             if "Source Type" in config.NOTION_DATABASE_PROPERTIES and "Source Type" in self.available_properties:
                 source_type = "Web Scraped" if email_data.get('was_scraped') else "Email"
                 properties["Source Type"] = {"select": {"name": source_type}}
+                
+            # Add explicit Categorization Method if the property exists
+            if "Categorization Method" in config.NOTION_DATABASE_PROPERTIES and "Categorization Method" in self.available_properties:
+                cat_method = "LLM" if explanation and "Matched keywords" not in str(explanation) else "Keywords"
+                properties["Categorization Method"] = {"select": {"name": cat_method}}
             
             # Prepare the page content blocks with enhanced formatting
             children = []
@@ -202,8 +210,12 @@ class NotionService:
                             }
                         ]
                     }
-                },
-                {
+                }
+            ])
+            
+            # Add explanation if available
+            if explanation:
+                children.append({
                     "object": "block",
                     "type": "paragraph",
                     "paragraph": {
@@ -211,7 +223,7 @@ class NotionService:
                             {
                                 "type": "text",
                                 "text": {
-                                    "content": "Source: "
+                                    "content": "Categorization Reasoning: "
                                 },
                                 "annotations": {
                                     "bold": True
@@ -220,16 +232,71 @@ class NotionService:
                             {
                                 "type": "text",
                                 "text": {
-                                    "content": "Web Scraped" if email_data.get('was_scraped') else "Email Content"
+                                    "content": explanation
                                 },
                                 "annotations": {
-                                    "color": "green" if email_data.get('was_scraped') else "gray"
+                                    "color": "green" if "Matched keywords" not in explanation else "orange"
                                 }
                             }
                         ]
                     }
+                })
+                
+            # Add categorization method
+            cat_method = "LLM" if explanation and "Matched keywords" not in str(explanation) else "Keywords"
+            children.append({
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": "Categorization Method: "
+                            },
+                            "annotations": {
+                                "bold": True
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": cat_method
+                            },
+                            "annotations": {
+                                "color": "purple"
+                            }
+                        }
+                    ]
                 }
-            ])
+            })
+            
+            children.append({
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": "Source: "
+                            },
+                            "annotations": {
+                                "bold": True
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": "Web Scraped" if email_data.get('was_scraped') else "Email Content"
+                            },
+                            "annotations": {
+                                "color": "green" if email_data.get('was_scraped') else "gray"
+                            }
+                        }
+                    ]
+                }
+            })
             
             # Add source links
             if email_data.get('source_url'):

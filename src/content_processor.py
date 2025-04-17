@@ -2,9 +2,11 @@
 Content processor module for categorizing and processing email content.
 """
 import logging
+import os
 from typing import Dict, Tuple, List
 
 import config
+from src.llm_service import LLMService
 
 logger = logging.getLogger("gmail_notion_manager.processor")
 
@@ -13,13 +15,37 @@ class ContentProcessor:
     
     def __init__(self):
         """Initialize the content processor."""
-        pass
+        self.use_llm = os.getenv("USE_LLM_CATEGORIZATION", "false").lower() == "true"
+        
+        if self.use_llm:
+            self.llm_service = LLMService()
+            logger.info("Content processor initialized with LLM categorization")
+        else:
+            logger.info("Content processor initialized with keyword-based categorization")
     
     def categorize_content(self, subject: str, content: str) -> Tuple[str, float, Dict[str, float]]:
         """
-        Categorize content based on keywords with confidence score.
+        Categorize content based on LLM or keywords with confidence score.
         Returns tuple of (category, confidence_score, all_scores)
         """
+        # Try LLM categorization if enabled
+        if self.use_llm:
+            try:
+                category, confidence, all_scores, explanation = self.llm_service.categorize_content(subject, content)
+                
+                # If LLM categorization was successful, return the results
+                if category != "Sin categoría" and confidence > 0:
+                    logger.info(f"LLM categorization: {category} (confidence: {confidence:.2f})")
+                    # Store explanation in the scores dict with special key
+                    all_scores["__explanation__"] = explanation
+                    return category, confidence, all_scores
+                
+                # If LLM failed, fall back to keyword-based approach
+                logger.info("LLM categorization failed, falling back to keyword-based approach")
+            except Exception as e:
+                logger.error(f"Error in LLM categorization, falling back to keyword-based: {str(e)}")
+        
+        # Keyword-based categorization (original implementation)
         text = (subject + " " + content).lower()
         
         # Track keyword matches for each category
@@ -54,6 +80,14 @@ class ContentProcessor:
             # If confidence is too low, mark as uncategorized
             if best_category[1] < config.SETTINGS["categorization_threshold"]:
                 return "Sin categoría", 0.0, category_scores
+                
+            # For keyword-based approach, provide an explanation of keywords matched
+            if category_matched_keywords[best_category[0]]:
+                matched_kws = ", ".join(category_matched_keywords[best_category[0]])
+                explanation = f"Matched keywords: {matched_kws}"
+                category_scores["__explanation__"] = explanation
+                logger.info(f"Keyword categorization: {best_category[0]} (confidence: {best_category[1]:.2f})")
+                logger.info(f"  {explanation}")
                 
             return best_category[0], best_category[1], category_scores
         
